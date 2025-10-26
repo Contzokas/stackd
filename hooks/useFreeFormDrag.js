@@ -5,12 +5,15 @@ export function useFreeFormDrag(columns, setColumns) {
   const dragOffsetRef = useRef({ x: 0, y: 0 });
 
   const handleColumnMouseDown = useCallback((e, column) => {
-    // Prevent dragging if clicking on interactive elements
-    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') {
+    // Allow dragging from drag handle button, but not other interactive elements
+    const isDragHandle = e.target.closest('[data-drag-handle]');
+    if (!isDragHandle && (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT')) {
       return;
     }
 
-    const rect = e.currentTarget.getBoundingClientRect();
+    // Get the column element's bounding rect for proper offset calculation
+    const columnElement = e.currentTarget.closest('[data-column]') || e.currentTarget;
+    const rect = columnElement.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
 
