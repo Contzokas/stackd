@@ -1,6 +1,8 @@
 "use client";
 import { memo, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import ShareBoardModal from "./ShareBoardModal";
+import AnalyticsDashboard from "./AnalyticsDashboard";
 
 function BoardSelector({ 
   boards, 
@@ -17,6 +19,7 @@ function BoardSelector({
   const [editedName, setEditedName] = useState("");
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [boardToShare, setBoardToShare] = useState(null);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   const handleCreateBoard = useCallback(() => {
     if (newBoardName.trim()) {
@@ -68,17 +71,34 @@ function BoardSelector({
   }, [handleCreateBoard, handleSaveEdit]);
 
   const activeBoardData = boards.find(b => b.id === activeBoard);
+  const userRole = activeBoardData?.userRole || 'viewer';
+  const canViewAnalytics = userRole === 'owner' || userRole === 'admin';
 
   return (
-    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+    <>
+      <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
       {/* Current Board Display */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="bg-[#2E3436] text-white px-6 py-3 rounded-lg shadow-lg hover:bg-[#3a4244] transition-colors flex items-center gap-3"
-      >
-        <span className="font-semibold text-lg">{activeBoardData?.name || "Select Board"}</span>
-        <span className="text-gray-400">{isOpen ? "▲" : "▼"}</span>
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="bg-[#2E3436] text-white px-6 py-3 rounded-lg shadow-lg hover:bg-[#3a4244] transition-colors flex items-center gap-3"
+        >
+          <span className="font-semibold text-lg">{activeBoardData?.name || "Select Board"}</span>
+          <span className="text-gray-400">{isOpen ? "▲" : "▼"}</span>
+        </button>
+        
+        {/* Analytics Button - Only for Owners and Admins */}
+        {activeBoard && canViewAnalytics && (
+          <button
+            onClick={() => setAnalyticsOpen(true)}
+            className="bg-[#2E3436] text-white px-4 py-3 rounded-lg shadow-lg hover:bg-[#3a4244] transition-colors flex items-center gap-2"
+            title="View Analytics"
+          >
+            <span className="text-xl">📊</span>
+            <span className="font-medium">Analytics</span>
+          </button>
+        )}
+      </div>
 
       {/* Dropdown Menu */}
       {isOpen && (
@@ -203,7 +223,17 @@ function BoardSelector({
           }}
         />
       )}
-    </div>
+      </div>
+      
+      {/* Analytics Dashboard - Render via Portal to escape parent constraints */}
+      {analyticsOpen && activeBoard && typeof window !== 'undefined' && createPortal(
+        <AnalyticsDashboard
+          boardId={activeBoard}
+          onClose={() => setAnalyticsOpen(false)}
+        />,
+        document.body
+      )}
+    </>
   );
 }
 

@@ -24,10 +24,11 @@ export async function POST(req) {
     const { data: card, error } = await supabase
       .from('cards')
       .insert([{
-        column_id: columnId,
+        column_id,
         title,
         description,
-        created_by: userId
+        created_by: userId,
+        status: 'in_progress' // Default status
       }])
       .select()
       .single();
@@ -35,6 +36,21 @@ export async function POST(req) {
     if (error) {
       console.error('Database error creating card:', error);
       throw error;
+    }
+    
+    // Log initial card creation to history for analytics
+    const { error: historyError } = await supabase
+      .from('card_history')
+      .insert([{
+        card_id: card.id,
+        from_column_id: null,
+        to_column_id: column_id,
+        moved_by: userId
+      }]);
+    
+    if (historyError) {
+      console.warn('Failed to log card creation to history:', historyError);
+      // Don't fail the request if history logging fails
     }
 
     // Fetch creator info from Clerk
@@ -84,9 +100,18 @@ export async function PUT(req) {
     console.log('PUT /api/cards - Received body:', body);
     console.log('PUT /api/cards - Card ID:', cardId);
     
+    const supabase = getServiceSupabase();
+    
+    // Get the current card state before updating (for history tracking)
+    const { data: oldCard } = await supabase
+      .from('cards')
+      .select('id, column_id, status')
+      .eq('id', cardId)
+      .single();
+    
     // Filter out any fields that aren't in the cards table
     // NOTE: cards table does NOT have image_url column
-    const allowedFields = ['title', 'description', 'column_id'];
+    const allowedFields = ['title', 'description', 'column_id', 'status', 'completed_at', 'due_date'];
     const updateData = {};
     for (const [key, value] of Object.entries(body)) {
       if (allowedFields.includes(key)) {
@@ -96,14 +121,22 @@ export async function PUT(req) {
       }
     }
     
+    // Auto-set completed_at if status changes to 'completed'
+    if (body.status === 'completed' && oldCard?.status !== 'completed') {
+      updateData.completed_at = new Date().toISOString();
+    }
+    
+    // Clear completed_at if status changes away from 'completed'
+    if (body.status && body.status !== 'completed' && oldCard?.status === 'completed') {
+      updateData.completed_at = null;
+    }
+    
     console.log('PUT /api/cards - Filtered update data:', updateData);
     
     if (Object.keys(updateData).length === 0) {
       console.log('PUT /api/cards - No valid fields to update');
       return new NextResponse('No valid fields to update', { status: 400 });
     }
-    
-    const supabase = getServiceSupabase();
     
     console.log('PUT /api/cards - About to update database...');
     
@@ -114,6 +147,23 @@ export async function PUT(req) {
       .eq('id', cardId)
       .select()
       .single();
+    
+    // If column_id changed, log to card_history for analytics
+    if (oldCard && updateData.column_id && oldCard.column_id !== updateData.column_id) {
+      const { error: historyError } = await supabase
+        .from('card_history')
+        .insert([{
+          card_id: cardId,
+          from_column_id: oldCard.column_id,
+          to_column_id: updateData.column_id,
+          moved_by: userId
+        }]);
+      
+      if (historyError) {
+        console.warn('Failed to log card movement to history:', historyError);
+        // Don't fail the request if history logging fails
+      }
+    }
 
     console.log('PUT /api/cards - Database response:', { card, error });
 

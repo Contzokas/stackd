@@ -22,17 +22,17 @@ export async function GET() {
 
     if (ownedError) throw ownedError;
 
-    // Get boards shared with user
-    const { data: sharedBoardIds, error: sharedError } = await supabase
+    // Get boards shared with user (include role information)
+    const { data: sharedBoardData, error: sharedError } = await supabase
       .from('board_members')
-      .select('board_id')
+      .select('board_id, role')
       .eq('user_id', userId);
 
     if (sharedError) throw sharedError;
 
     let sharedBoards = [];
-    if (sharedBoardIds && sharedBoardIds.length > 0) {
-      const boardIds = sharedBoardIds.map(b => b.board_id);
+    if (sharedBoardData && sharedBoardData.length > 0) {
+      const boardIds = sharedBoardData.map(b => b.board_id);
       const { data, error } = await supabase
         .from('boards')
         .select('*')
@@ -40,11 +40,22 @@ export async function GET() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      sharedBoards = data || [];
+      
+      // Add role information to shared boards
+      sharedBoards = (data || []).map(board => {
+        const memberData = sharedBoardData.find(m => m.board_id === board.id);
+        return {
+          ...board,
+          userRole: memberData?.role || 'viewer'
+        };
+      });
     }
 
-    // Combine and return all boards
-    const allBoards = [...(ownedBoards || []), ...sharedBoards];
+    // Add userRole to owned boards (owner role)
+    const allBoards = [
+      ...(ownedBoards || []).map(board => ({ ...board, userRole: 'owner' })), 
+      ...sharedBoards
+    ];
     
     return NextResponse.json(allBoards);
   } catch (error) {

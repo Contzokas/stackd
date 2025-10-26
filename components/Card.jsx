@@ -50,6 +50,15 @@ function Card({ card, onDelete, onEdit, onDragStart, onDragEnd, isDragging }) {
     console.log('Card component received new card prop:', card);
   }, [card]);
 
+  // Check if card is overdue
+  const isOverdue = card.due_date && 
+                    card.status !== 'completed' && 
+                    new Date(card.due_date) < new Date();
+  
+  const daysOverdue = isOverdue 
+    ? Math.floor((new Date() - new Date(card.due_date)) / (1000 * 60 * 60 * 24))
+    : 0;
+
   return (
     <>
       <div
@@ -59,8 +68,20 @@ function Card({ card, onDelete, onEdit, onDragStart, onDragEnd, isDragging }) {
         onClick={handleCardClick}
         className={`group bg-[#7D8C91] p-2 rounded shadow-sm mb-2 transition-opacity ${
           isDragging ? "opacity-50" : "opacity-100"
-        } ${isEditing ? '' : 'cursor-pointer'}`}
+        } ${isEditing ? '' : 'cursor-pointer'} ${isOverdue ? 'border-2 border-red-500' : ''}`}
       >
+        {isOverdue && (
+          <div className="bg-red-500 text-white text-xs px-2 py-1 rounded mb-2 flex items-center justify-between">
+            <span>⚠️ Overdue</span>
+            <span className="font-semibold">{daysOverdue}d</span>
+          </div>
+        )}
+        {card.due_date && !isOverdue && card.status !== 'completed' && (
+          <div className="bg-blue-500/80 text-white text-xs px-2 py-1 rounded mb-2 flex items-center justify-between">
+            <span>📅 Due</span>
+            <span>{new Date(card.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+          </div>
+        )}
         {card.image_url && !isEditing && (
           <img 
             src={card.image_url} 
@@ -140,6 +161,8 @@ export default memo(Card, (prevProps, nextProps) => {
     prevProps.card.column_id === nextProps.card.column_id &&
     prevProps.card.createdByUsername === nextProps.card.createdByUsername &&
     prevProps.card.image_url === nextProps.card.image_url &&
+    prevProps.card.due_date === nextProps.card.due_date &&
+    prevProps.card.status === nextProps.card.status &&
     prevProps.isDragging === nextProps.isDragging
   );
   

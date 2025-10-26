@@ -9,6 +9,7 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
   const [title, setTitle] = useState(card.title);
   const [localDescription, setLocalDescription] = useState(card.description || "");
   const [imageUrl, setImageUrl] = useState(card.image_url || "");
+  const [dueDate, setDueDate] = useState(card.due_date ? new Date(card.due_date).toISOString().slice(0, 16) : "");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
@@ -22,6 +23,7 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
   const lastSyncedTitle = useRef(card.title);
   const lastSyncedDescription = useRef(card.description || "");
   const lastSyncedImageUrl = useRef(card.image_url || "");
+  const lastSyncedDueDate = useRef(card.due_date || null);
   const currentCardIdRef = useRef(card.id);
 
   // Sync local state when:
@@ -31,17 +33,20 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
     const titleChanged = card.title !== lastSyncedTitle.current;
     const descriptionChanged = (card.description || "") !== lastSyncedDescription.current;
     const imageUrlChanged = (card.image_url || "") !== lastSyncedImageUrl.current;
+    const dueDateChanged = (card.due_date || null) !== lastSyncedDueDate.current;
     const cardIdChanged = currentCardIdRef.current !== card.id;
     
-    if (cardIdChanged || titleChanged || descriptionChanged || imageUrlChanged) {
+    if (cardIdChanged || titleChanged || descriptionChanged || imageUrlChanged || dueDateChanged) {
       console.log('CardModal: Syncing state -', {
         cardIdChanged,
         titleChanged,
         descriptionChanged,
         imageUrlChanged,
+        dueDateChanged,
         newTitle: card.title,
         newDescription: card.description,
-        newImageUrl: card.image_url
+        newImageUrl: card.image_url,
+        newDueDate: card.due_date
       });
       
       // Update refs
@@ -49,13 +54,15 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
       lastSyncedTitle.current = card.title;
       lastSyncedDescription.current = card.description || "";
       lastSyncedImageUrl.current = card.image_url || "";
+      lastSyncedDueDate.current = card.due_date || null;
       
       // Update local state
       setTitle(card.title);
       setLocalDescription(card.description || "");
       setImageUrl(card.image_url || "");
+      setDueDate(card.due_date ? new Date(card.due_date).toISOString().slice(0, 16) : "");
     }
-  }, [card.id, card.title, card.description, card.image_url])
+  }, [card.id, card.title, card.description, card.image_url, card.due_date])
 
   // Fetch comments
   const fetchComments = useCallback(async () => {
@@ -261,22 +268,24 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
     const titleChanged = title.trim() !== card.title;
     const descriptionChanged = localDescription !== (card.description || "");
     const imageUrlChanged = imageUrl !== (card.image_url || "");
+    const dueDateChanged = (dueDate || null) !== (card.due_date ? new Date(card.due_date).toISOString().slice(0, 16) : null);
     
     // Only auto-save if something actually changed
-    if (titleChanged || descriptionChanged || imageUrlChanged) {
+    if (titleChanged || descriptionChanged || imageUrlChanged || dueDateChanged) {
       const timeoutId = setTimeout(() => {
         console.log('Auto-saving after typing stopped');
         const updates = {
           title: title.trim(),
           description: localDescription,
-          image_url: imageUrl
+          image_url: imageUrl,
+          due_date: dueDate ? new Date(dueDate).toISOString() : null
         };
         onSave(card.id, updates);
       }, 1000); // Wait 1 second after user stops typing
 
       return () => clearTimeout(timeoutId);
     }
-  }, [title, localDescription, imageUrl, card.id, card.title, card.description, card.image_url, onSave]);
+  }, [title, localDescription, imageUrl, dueDate, card.id, card.title, card.description, card.image_url, card.due_date, onSave]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') {
@@ -330,6 +339,35 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
 
         {/* Content */}
         <div className="p-6 space-y-6">
+          {/* Due Date Section */}
+          <div>
+            <label className="block text-white font-semibold mb-2 text-sm">
+              📅 Due Date
+            </label>
+            <input
+              type="datetime-local"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="w-full bg-[#1a1a1a] text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            {dueDate && (
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-gray-400 text-xs">
+                  Due: {new Date(dueDate).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+                {new Date(dueDate) < new Date() && card.status !== 'completed' && (
+                  <span className="text-red-400 text-xs font-semibold">⚠️ Overdue</span>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Image Section */}
           <div>
             <label className="block text-white font-semibold mb-2 text-sm">

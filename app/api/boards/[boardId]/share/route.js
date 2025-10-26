@@ -23,22 +23,29 @@ export async function POST(req, { params }) {
       return new NextResponse("User ID is required", { status: 400 });
     }
 
-    if (!['viewer', 'editor'].includes(role)) {
-      return new NextResponse("Invalid role. Must be 'viewer' or 'editor'", { status: 400 });
+    if (!['viewer', 'editor', 'admin'].includes(role)) {
+      return new NextResponse("Invalid role. Must be 'viewer', 'editor', or 'admin'", { status: 400 });
     }
 
     const supabase = getServiceSupabase();
 
-    // Check if current user is board owner
+    // Check if current user is board owner or admin
     const { data: board, error: boardError } = await supabase
       .from('boards')
-      .select('*')
+      .select('id, owner_id, board_members(user_id, role)')
       .eq('id', boardId)
-      .eq('owner_id', userId)
       .single();
 
     if (boardError || !board) {
-      return new NextResponse("Board not found or you don't have permission", { status: 404 });
+      return new NextResponse("Board not found", { status: 404 });
+    }
+
+    const isOwner = board.owner_id === userId;
+    const memberRole = board.board_members?.find(m => m.user_id === userId)?.role;
+    const isAdmin = memberRole === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      return new NextResponse("You don't have permission to share this board", { status: 403 });
     }
 
     // Check if user is already a member
@@ -160,7 +167,70 @@ export async function GET(req, { params }) {
   }
 }
 
-// DELETE /api/boards/[boardId]/share?userId=xxx - Remove user from board
+// PUT /api/boards/[boardId]/share - Update member role
+export async function PUT(req, { params }) {
+  const { userId } = await auth();
+  
+  if (!userId) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
+  const resolvedParams = await params;
+  const { boardId } = resolvedParams;
+  
+  console.log('PUT /api/boards/[boardId]/share - boardId:', boardId);
+
+  try {
+    const { userId: targetUserId, role } = await req.json();
+
+    if (!targetUserId || !role) {
+      return new NextResponse("User ID and role are required", { status: 400 });
+    }
+
+    if (!['viewer', 'editor', 'admin'].includes(role)) {
+      return new NextResponse("Invalid role. Must be 'viewer', 'editor', or 'admin'", { status: 400 });
+    }
+
+    const supabase = getServiceSupabase();
+
+    // Check if current user is board owner or admin
+    const { data: board, error: boardError } = await supabase
+      .from('boards')
+      .select('id, owner_id, board_members(user_id, role)')
+      .eq('id', boardId)
+      .single();
+
+    if (boardError || !board) {
+      return new NextResponse("Board not found", { status: 404 });
+    }
+
+    const isOwner = board.owner_id === userId;
+    const memberRole = board.board_members?.find(m => m.user_id === userId)?.role;
+    const isAdmin = memberRole === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      return new NextResponse("You don't have permission to change member roles", { status: 403 });
+    }
+
+    // Update member role
+    const { data, error } = await supabase
+      .from('board_members')
+      .update({ role })
+      .eq('board_id', boardId)
+      .eq('user_id', targetUserId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Error updating member role:', error);
+    return new NextResponse(error.message, { status: 500 });
+  }
+}
+
+// DELETE /api/boards/[boardId]/share - Remove user from board
 export async function DELETE(req, { params }) {
   const { userId } = await auth();
   
@@ -170,8 +240,9 @@ export async function DELETE(req, { params }) {
 
   const resolvedParams = await params;
   const { boardId } = resolvedParams;
-  const { searchParams } = new URL(req.url);
-  const targetUserId = searchParams.get('userId');
+  
+  // Get userId from request body instead of query params
+  const { userId: targetUserId } = await req.json();
 
   console.log('DELETE /api/boards/[boardId]/share - boardId:', boardId, 'targetUserId:', targetUserId);
 
@@ -182,16 +253,23 @@ export async function DELETE(req, { params }) {
   try {
     const supabase = getServiceSupabase();
     
-    // Check if current user is board owner
-    const { data: board } = await supabase
+    // Check if current user is board owner or admin
+    const { data: board, error: boardError } = await supabase
       .from('boards')
-      .select('*')
+      .select('id, owner_id, board_members(user_id, role)')
       .eq('id', boardId)
-      .eq('owner_id', userId)
       .single();
 
-    if (!board) {
-      return new NextResponse("Board not found or you don't have permission", { status: 404 });
+    if (boardError || !board) {
+      return new NextResponse("Board not found", { status: 404 });
+    }
+
+    const isOwner = board.owner_id === userId;
+    const memberRole = board.board_members?.find(m => m.user_id === userId)?.role;
+    const isAdmin = memberRole === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      return new NextResponse("You don't have permission to remove members", { status: 403 });
     }
 
     // Remove board member

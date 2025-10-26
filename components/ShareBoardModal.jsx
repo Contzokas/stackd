@@ -220,9 +220,15 @@ export default function ShareBoardModal({ boardId, boardName, isOpen, onClose })
                 onChange={(e) => setRole(e.target.value)}
                 className="w-full bg-[#1a1a1a] text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
-                <option value="viewer">Viewer (read-only)</option>
-                <option value="editor">Editor (can edit)</option>
+                <option value="viewer">👁️ Viewer (read-only)</option>
+                <option value="editor">✏️ Editor (create/edit content)</option>
+                <option value="admin">👑 Admin (manage people + analytics)</option>
               </select>
+              <p className="text-gray-400 text-xs mt-2">
+                {role === 'viewer' && '• Can only view board content'}
+                {role === 'editor' && '• Can create/edit cards and columns'}
+                {role === 'admin' && '• Can manage members, view analytics, and edit content'}
+              </p>
             </div>
 
             {error && (
@@ -249,27 +255,38 @@ export default function ShareBoardModal({ boardId, boardName, isOpen, onClose })
               {members.map((member) => (
                 <div
                   key={member.user_id}
-                  className="flex items-center justify-between bg-[#1a1a1a] rounded-lg p-2"
+                  className="flex items-center justify-between bg-[#1a1a1a] rounded-lg p-2 gap-2"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
                     {member.imageUrl && (
                       <img 
                         src={member.imageUrl} 
                         alt={member.username}
-                        className="w-6 h-6 rounded-full"
+                        className="w-6 h-6 rounded-full shrink-0"
                       />
                     )}
-                    <div>
-                      <p className="text-white text-sm">@{member.username}</p>
-                      <p className="text-gray-400 text-xs">{member.role}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white text-sm truncate">@{member.username}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleRemoveMember(member.user_id)}
-                    className="text-red-400 hover:text-red-300 text-sm"
-                  >
-                    Remove
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <select
+                      value={member.role}
+                      onChange={(e) => handleChangeRole(member.user_id, e.target.value)}
+                      className="bg-[#2E3436] text-white text-xs rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                      <option value="viewer">👁️ Viewer</option>
+                      <option value="editor">✏️ Editor</option>
+                      <option value="admin">👑 Admin</option>
+                    </select>
+                    <button
+                      onClick={() => handleRemoveMember(member.user_id)}
+                      className="text-red-400 hover:text-red-300 text-sm px-2"
+                      title="Remove member"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
