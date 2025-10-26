@@ -210,7 +210,7 @@ stackd/
 
 ## 👤 Δημιουργός
 
-**Κωνσταντίνος Τζιογκαδόρος**
+**Κωνσταντίνος Τζόκας**
 
 - Twitter: [@Tziogadoros](https://x.com/Tziogadoros)
 - GitHub: [@Contzokas](https://github.com/Contzokas)

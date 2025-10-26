@@ -208,7 +208,7 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## 👤 Author
 
-**Constantinos Tziogadoros**
+**Constantinos Tzokas**
 
 - Twitter: [@Tziogadoros](https://x.com/Tziogadoros)
 - GitHub: [@Contzokas](https://github.com/Contzokas)
