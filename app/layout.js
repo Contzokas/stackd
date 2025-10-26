@@ -29,7 +29,7 @@ export const metadata = {
     siteName: "Stackd",
     images: [
       {
-        url: "/Stackd.png",
+        url: "/Socials.png",
         width: 1200,
         height: 630,
         alt: "Stackd - Offline-First Task Management Application",
