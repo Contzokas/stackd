@@ -10,7 +10,10 @@ export async function GET(req, { params }) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const { boardId } = await params;
+  const resolvedParams = await params;
+  const { boardId } = resolvedParams;
+  
+  console.log('GET /api/boards/[boardId] - boardId:', boardId, 'userId:', userId);
 
   try {
     const supabase = getServiceSupabase();
@@ -63,7 +66,7 @@ export async function GET(req, { params }) {
       }
     }));
 
-    // Get cards
+    // Get cards for all columns in this board
     const columnIds = columns?.map(c => c.id) || [];
     let cards = [];
     
@@ -74,9 +77,15 @@ export async function GET(req, { params }) {
         .in('column_id', columnIds)
         .order('created_at');
 
-      if (cardsError) throw cardsError;
+      if (cardsError) {
+        console.error('Error fetching cards:', cardsError);
+        throw cardsError;
+      }
+      
       cards = cardsData || [];
     }
+    
+    console.log('Fetched cards:', cards.length, 'cards for', columnIds.length, 'columns');
 
     return NextResponse.json({
       ...board,
@@ -97,7 +106,8 @@ export async function PUT(req, { params }) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const { boardId } = await params;
+  const resolvedParams = await params;
+  const { boardId } = resolvedParams;
 
   try {
     const supabase = getServiceSupabase();
@@ -139,7 +149,8 @@ export async function DELETE(req, { params }) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const { boardId } = await params;
+  const resolvedParams = await params;
+  const { boardId } = resolvedParams;
 
   try {
     const supabase = getServiceSupabase();

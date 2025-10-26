@@ -38,13 +38,26 @@ export default function CloudBoardManager() {
 
   // Fetch active board with columns and cards
   const fetchActiveBoardData = useCallback(async () => {
-    if (!activeBoard) return;
+    if (!activeBoard) {
+      setActiveBoardData(null);
+      return;
+    }
+
+    console.log('Fetching board data for:', activeBoard);
+    setActiveBoardData(null); // Clear previous data to show loading
 
     try {
       const response = await fetch(`/api/boards/${activeBoard}`);
       if (response.ok) {
         const data = await response.json();
+        console.log('Received board data:', {
+          boardId: data.id,
+          columns: data.columns?.length || 0,
+          cards: data.cards?.length || 0
+        });
         setActiveBoardData(data);
+      } else {
+        console.error('Failed to fetch board:', response.status);
       }
     } catch (error) {
       console.error('Error fetching board data:', error);
@@ -60,10 +73,8 @@ export default function CloudBoardManager() {
 
   // Load active board data
   useEffect(() => {
-    if (activeBoard) {
-      fetchActiveBoardData();
-    }
-  }, [activeBoard, fetchActiveBoardData]);
+    fetchActiveBoardData();
+  }, [activeBoard]); // Remove fetchActiveBoardData from deps to prevent loops
 
   // Set up real-time subscriptions
   useEffect(() => {

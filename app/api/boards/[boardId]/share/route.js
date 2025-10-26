@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { clerkClient } from '@clerk/nextjs/server';
-import { supabase } from '@/lib/supabase';
+import { getServiceSupabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
 // POST /api/boards/[boardId]/share - Share board with another user
@@ -11,7 +11,10 @@ export async function POST(req, { params }) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const { boardId } = await params;
+  const resolvedParams = await params;
+  const { boardId } = resolvedParams;
+  
+  console.log('POST /api/boards/[boardId]/share - boardId:', boardId);
 
   try {
     const { userId: targetUserId, role = 'editor' } = await req.json();
@@ -23,6 +26,8 @@ export async function POST(req, { params }) {
     if (!['viewer', 'editor'].includes(role)) {
       return new NextResponse("Invalid role. Must be 'viewer' or 'editor'", { status: 400 });
     }
+
+    const supabase = getServiceSupabase();
 
     // Check if current user is board owner
     const { data: board, error: boardError } = await supabase
@@ -82,9 +87,14 @@ export async function GET(req, { params }) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const { boardId } = await params;
+  const resolvedParams = await params;
+  const { boardId } = resolvedParams;
+  
+  console.log('GET /api/boards/[boardId]/share - boardId:', boardId);
 
   try {
+    const supabase = getServiceSupabase();
+    
     // Check if user has access to this board
     const { data: board } = await supabase
       .from('boards')
@@ -158,15 +168,20 @@ export async function DELETE(req, { params }) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const { boardId } = await params;
+  const resolvedParams = await params;
+  const { boardId } = resolvedParams;
   const { searchParams } = new URL(req.url);
   const targetUserId = searchParams.get('userId');
+
+  console.log('DELETE /api/boards/[boardId]/share - boardId:', boardId, 'targetUserId:', targetUserId);
 
   if (!targetUserId) {
     return new NextResponse("User ID is required", { status: 400 });
   }
 
   try {
+    const supabase = getServiceSupabase();
+    
     // Check if current user is board owner
     const { data: board } = await supabase
       .from('boards')
