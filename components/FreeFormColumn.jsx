@@ -48,6 +48,7 @@ function FreeFormColumn({
             key={card.id}
             card={card}
             onDelete={onDeleteCard}
+            onEdit={onEditCard}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             isDragging={draggedCard?.id === card.id}
