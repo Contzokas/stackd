@@ -14,27 +14,38 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentText, setEditingCommentText] = useState("");
   
-  // Track the last saved values to compare against
-  const lastSavedTitle = useRef(card.title);
-  const lastSavedDescription = useRef(card.description || "");
-  const isSavingRef = useRef(false);
+  // Track the last saved values to detect actual data changes from database
+  const lastSyncedTitle = useRef(card.title);
+  const lastSyncedDescription = useRef(card.description || "");
+  const currentCardIdRef = useRef(card.id);
 
-  // Update local state when card prop changes from external source
-  // but not if we're in the middle of typing/saving
+  // Sync local state when:
+  // 1. Card ID changes (switching to different card)
+  // 2. Card title/description changes from database (after save or reload)
   useEffect(() => {
-    if (!isSavingRef.current) {
-      if (card.title !== title) {
-        console.log('CardModal: Updating title from prop', { from: title, to: card.title });
-        setTitle(card.title);
-        lastSavedTitle.current = card.title;
-      }
-      if ((card.description || "") !== localDescription) {
-        console.log('CardModal: Updating description from prop', { from: localDescription, to: card.description });
-        setLocalDescription(card.description || "");
-        lastSavedDescription.current = card.description || "";
-      }
+    const titleChanged = card.title !== lastSyncedTitle.current;
+    const descriptionChanged = (card.description || "") !== lastSyncedDescription.current;
+    const cardIdChanged = currentCardIdRef.current !== card.id;
+    
+    if (cardIdChanged || titleChanged || descriptionChanged) {
+      console.log('CardModal: Syncing state -', {
+        cardIdChanged,
+        titleChanged,
+        descriptionChanged,
+        newTitle: card.title,
+        newDescription: card.description
+      });
+      
+      // Update refs
+      currentCardIdRef.current = card.id;
+      lastSyncedTitle.current = card.title;
+      lastSyncedDescription.current = card.description || "";
+      
+      // Update local state
+      setTitle(card.title);
+      setLocalDescription(card.description || "");
     }
-  }, [card.title, card.description]);
+  }, [card.id, card.title, card.description])
 
   // Fetch comments
   const fetchComments = useCallback(async () => {
@@ -133,79 +144,38 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
     }
   };
 
-  const handleSave = useCallback(() => {
-    // Only send title if it's different, and description if it's different
-    const updates = {};
-    if (title.trim() !== lastSavedTitle.current) {
-      updates.title = title.trim();
-    }
-    if (localDescription !== lastSavedDescription.current) {
-      updates.description = localDescription;
-    }
-    
-    console.log('CardModal handleSave:', {
-      currentTitle: title,
-      currentDesc: localDescription,
-      lastSavedTitle: lastSavedTitle.current,
-      lastSavedDesc: lastSavedDescription.current,
-      updates
-    });
-    
-    // Only call onSave if there are actual changes
-    if (Object.keys(updates).length > 0) {
-      // Set saving flag
-      isSavingRef.current = true;
-      
-      // Update refs to prevent re-saving the same values
-      if (updates.title !== undefined) {
-        lastSavedTitle.current = updates.title;
-      }
-      if (updates.description !== undefined) {
-        lastSavedDescription.current = updates.description;
-      }
-      
-      console.log('Calling onSave with updates:', updates);
-      onSave(card.id, updates);
-      
-      // Clear saving flag after a short delay
-      setTimeout(() => {
-        isSavingRef.current = false;
-      }, 500);
-    } else {
-      console.log('No changes to save');
-    }
-  }, [card.id, title, localDescription, onSave]);
-
   const handleManualSave = useCallback(() => {
-    console.log('Manual save button clicked');
-    // Force save with current values regardless of refs
+    console.log('=== Manual save clicked ===');
+    console.log('Saving:', { title: title.trim(), description: localDescription });
+    
+    // Always save current values
     const updates = {
       title: title.trim(),
       description: localDescription
     };
     
-    console.log('Force saving with current values:', updates);
-    
-    // Update refs
-    lastSavedTitle.current = updates.title;
-    lastSavedDescription.current = updates.description;
-    
     onSave(card.id, updates);
   }, [card.id, title, localDescription, onSave]);
 
-  // Auto-save changes after user stops typing (debounced)
+  // Auto-save: Trigger save 1 second after user stops typing
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      const titleChanged = title.trim() !== lastSavedTitle.current;
-      const descriptionChanged = localDescription !== lastSavedDescription.current;
-      
-      if (titleChanged || descriptionChanged) {
-        handleSave();
-      }
-    }, 1000); // Wait 1 second after user stops typing
+    const titleChanged = title.trim() !== card.title;
+    const descriptionChanged = localDescription !== (card.description || "");
+    
+    // Only auto-save if something actually changed
+    if (titleChanged || descriptionChanged) {
+      const timeoutId = setTimeout(() => {
+        console.log('Auto-saving after typing stopped');
+        const updates = {
+          title: title.trim(),
+          description: localDescription
+        };
+        onSave(card.id, updates);
+      }, 1000); // Wait 1 second after user stops typing
 
-    return () => clearTimeout(timeoutId);
-  }, [title, localDescription, handleSave]);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [title, localDescription, card.id, card.title, card.description, onSave]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') {

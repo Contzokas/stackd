@@ -140,12 +140,25 @@ function FreeFormColumn({
 
 // Memoize to prevent unnecessary re-renders
 export default memo(FreeFormColumn, (prevProps, nextProps) => {
+  // Check if cards array has same length and each card has same data
+  const cardsUnchanged = 
+    prevProps.cards.length === nextProps.cards.length &&
+    prevProps.cards.every((prevCard, index) => {
+      const nextCard = nextProps.cards[index];
+      return (
+        prevCard.id === nextCard.id &&
+        prevCard.title === nextCard.title &&
+        prevCard.description === nextCard.description &&
+        prevCard.column_id === nextCard.column_id
+      );
+    });
+
   return (
     prevProps.column.id === nextProps.column.id &&
     prevProps.column.title === nextProps.column.title &&
     prevProps.column.position.x === nextProps.column.position.x &&
     prevProps.column.position.y === nextProps.column.position.y &&
-    prevProps.cards.length === nextProps.cards.length &&
+    cardsUnchanged &&
     prevProps.isDragging === nextProps.isDragging &&
     prevProps.isDragOver === nextProps.isDragOver &&
     prevProps.draggedCard?.id === nextProps.draggedCard?.id

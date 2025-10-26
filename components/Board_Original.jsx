@@ -9,6 +9,8 @@ export default function Board({ boardId, initialColumns, initialCards, onBoardUp
   const [cards, setCards] = useState(initialCards || []);
   const [hasChanged, setHasChanged] = useState(false);
 
+  console.log('Board component render - cards state:', cards.length, 'cards');
+
   const boardKey = useMemo(() => boardId, [boardId]);
 
   // Reset state when board changes
@@ -301,6 +303,7 @@ export default function Board({ boardId, initialColumns, initialCards, onBoardUp
     >
       {columns.map((col) => {
         const cardsForCol = cards.filter((card) => card.column_id === col.id);
+        console.log(`Rendering column ${col.id} with ${cardsForCol.length} cards:`, cardsForCol);
         return (
           <FreeFormColumn
             key={col.id}
