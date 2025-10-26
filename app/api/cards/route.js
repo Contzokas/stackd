@@ -111,7 +111,7 @@ export async function PUT(req) {
     
     // Filter out any fields that aren't in the cards table
     // NOTE: cards table does NOT have image_url column
-    const allowedFields = ['title', 'description', 'column_id', 'status', 'completed_at', 'due_date'];
+    const allowedFields = ['title', 'description', 'column_id', 'status', 'completed_at', 'due_date', 'tag'];
     const updateData = {};
     for (const [key, value] of Object.entries(body)) {
       if (allowedFields.includes(key)) {

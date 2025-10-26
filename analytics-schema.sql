@@ -7,6 +7,7 @@
 ALTER TABLE cards ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'in_progress';
 ALTER TABLE cards ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE cards ADD COLUMN IF NOT EXISTS due_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE cards ADD COLUMN IF NOT EXISTS tag VARCHAR(50);
 
 -- Create card_history table to track movements
 CREATE TABLE IF NOT EXISTS card_history (
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS card_history (
 CREATE INDEX IF NOT EXISTS idx_cards_status ON cards(status);
 CREATE INDEX IF NOT EXISTS idx_cards_completed_at ON cards(completed_at);
 CREATE INDEX IF NOT EXISTS idx_cards_due_date ON cards(due_date);
+CREATE INDEX IF NOT EXISTS idx_cards_tag ON cards(tag);
 CREATE INDEX IF NOT EXISTS idx_card_history_card ON card_history(card_id);
 CREATE INDEX IF NOT EXISTS idx_card_history_moved_at ON card_history(moved_at);
 CREATE INDEX IF NOT EXISTS idx_card_history_columns ON card_history(from_column_id, to_column_id);
@@ -87,6 +89,7 @@ SELECT
   c.created_at,
   c.completed_at,
   c.due_date,
+  c.tag,
   c.column_id,
   col.title as column_title,
   col.board_id,
@@ -158,4 +161,15 @@ ALTER PUBLICATION supabase_realtime ADD TABLE card_history;
 COMMENT ON COLUMN cards.status IS 'Card status: backlog, todo, in_progress, review, completed, archived';
 COMMENT ON COLUMN cards.completed_at IS 'Timestamp when card was marked as completed';
 COMMENT ON COLUMN cards.due_date IS 'Due date for the card - used to calculate overdue analytics';
+COMMENT ON COLUMN cards.tag IS 'Single tag for categorization: urgent, high-priority, bug, feature, etc. (only one tag allowed per card)';
 COMMENT ON TABLE card_history IS 'Tracks all card movements between columns for analytics';
+
+-- ============================================
+-- PREDEFINED TAGS (for reference)
+-- ============================================
+-- Suggested tags for your cards:
+-- Priority: 'urgent', 'high-priority', 'low-priority'
+-- Type: 'bug', 'feature', 'enhancement', 'task'
+-- Status: 'blocked', 'waiting', 'review-needed'
+-- Category: 'frontend', 'backend', 'design', 'documentation'
+-- Custom: Add any tags that fit your workflow!

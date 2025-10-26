@@ -4,12 +4,25 @@ import { createPortal } from "react-dom";
 import { useUser } from "@clerk/nextjs";
 import { supabase } from "@/lib/supabase";
 
+// Predefined tags with colors and icons
+const PREDEFINED_TAGS = [
+  { value: 'urgent', label: 'Urgent', icon: '🚨', bgColor: 'bg-red-600', textColor: 'text-white', borderColor: 'border-red-400' },
+  { value: 'high-priority', label: 'High Priority', icon: '⚡', bgColor: 'bg-orange-600', textColor: 'text-white', borderColor: 'border-orange-400' },
+  { value: 'low-priority', label: 'Low Priority', icon: '📌', bgColor: 'bg-gray-600', textColor: 'text-white', borderColor: 'border-gray-400' },
+  { value: 'bug', label: 'Bug', icon: '🐛', bgColor: 'bg-red-700', textColor: 'text-white', borderColor: 'border-red-500' },
+  { value: 'feature', label: 'Feature', icon: '✨', bgColor: 'bg-blue-600', textColor: 'text-white', borderColor: 'border-blue-400' },
+  { value: 'enhancement', label: 'Enhancement', icon: '🔧', bgColor: 'bg-purple-600', textColor: 'text-white', borderColor: 'border-purple-400' },
+  { value: 'blocked', label: 'Blocked', icon: '🚫', bgColor: 'bg-yellow-600', textColor: 'text-white', borderColor: 'border-yellow-400' },
+  { value: 'review-needed', label: 'Review Needed', icon: '👀', bgColor: 'bg-indigo-600', textColor: 'text-white', borderColor: 'border-indigo-400' },
+];
+
 function CardModalContent({ card, onClose, onSave, onDelete }) {
   const { user } = useUser();
   const [title, setTitle] = useState(card.title);
   const [localDescription, setLocalDescription] = useState(card.description || "");
   const [imageUrl, setImageUrl] = useState(card.image_url || "");
   const [dueDate, setDueDate] = useState(card.due_date ? new Date(card.due_date).toISOString().slice(0, 16) : "");
+  const [tag, setTag] = useState(card.tag || null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
@@ -24,6 +37,7 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
   const lastSyncedDescription = useRef(card.description || "");
   const lastSyncedImageUrl = useRef(card.image_url || "");
   const lastSyncedDueDate = useRef(card.due_date || null);
+  const lastSyncedTag = useRef(card.tag || null);
   const currentCardIdRef = useRef(card.id);
 
   // Sync local state when:
@@ -34,19 +48,22 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
     const descriptionChanged = (card.description || "") !== lastSyncedDescription.current;
     const imageUrlChanged = (card.image_url || "") !== lastSyncedImageUrl.current;
     const dueDateChanged = (card.due_date || null) !== lastSyncedDueDate.current;
+    const tagChanged = (card.tag || null) !== lastSyncedTag.current;
     const cardIdChanged = currentCardIdRef.current !== card.id;
     
-    if (cardIdChanged || titleChanged || descriptionChanged || imageUrlChanged || dueDateChanged) {
+    if (cardIdChanged || titleChanged || descriptionChanged || imageUrlChanged || dueDateChanged || tagChanged) {
       console.log('CardModal: Syncing state -', {
         cardIdChanged,
         titleChanged,
         descriptionChanged,
         imageUrlChanged,
         dueDateChanged,
+        tagChanged,
         newTitle: card.title,
         newDescription: card.description,
         newImageUrl: card.image_url,
-        newDueDate: card.due_date
+        newDueDate: card.due_date,
+        newTag: card.tag
       });
       
       // Update refs
@@ -55,14 +72,16 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
       lastSyncedDescription.current = card.description || "";
       lastSyncedImageUrl.current = card.image_url || "";
       lastSyncedDueDate.current = card.due_date || null;
+      lastSyncedTag.current = card.tag || null;
       
       // Update local state
       setTitle(card.title);
       setLocalDescription(card.description || "");
       setImageUrl(card.image_url || "");
       setDueDate(card.due_date ? new Date(card.due_date).toISOString().slice(0, 16) : "");
+      setTag(card.tag || null);
     }
-  }, [card.id, card.title, card.description, card.image_url, card.due_date])
+  }, [card.id, card.title, card.description, card.image_url, card.due_date, card.tag])
 
   // Fetch comments
   const fetchComments = useCallback(async () => {
@@ -264,6 +283,7 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
   };
 
   // Auto-save: Trigger save 1 second after user stops typing
+  // Note: tag updates immediately, not debounced
   useEffect(() => {
     const titleChanged = title.trim() !== card.title;
     const descriptionChanged = localDescription !== (card.description || "");
@@ -364,6 +384,51 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
                 {new Date(dueDate) < new Date() && card.status !== 'completed' && (
                   <span className="text-red-400 text-xs font-semibold">⚠️ Overdue</span>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* Tag Section - Only ONE tag allowed */}
+          <div>
+            <label className="block text-white font-semibold mb-2 text-sm">
+              🏷️ Tag (select one)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {PREDEFINED_TAGS.map((tagOption) => (
+                <button
+                  type="button"
+                  key={tagOption.value}
+                  onClick={() => {
+                    // Toggle: if clicking the same tag, remove it; otherwise set new tag
+                    const newTag = tag === tagOption.value ? null : tagOption.value;
+                    setTag(newTag);
+                    
+                    // Save immediately (like title updates)
+                    onSave(card.id, { tag: newTag });
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                    tag === tagOption.value
+                      ? `${tagOption.bgColor} ${tagOption.textColor} ${tagOption.borderColor} border-2`
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-2 border-transparent'
+                  }`}
+                >
+                  {tagOption.icon} {tagOption.label}
+                </button>
+              ))}
+            </div>
+            {tag && (
+              <div className="mt-2 p-2 bg-gray-800 rounded">
+                <p className="text-gray-400 text-xs mb-1">Selected tag:</p>
+                <div className="flex flex-wrap gap-1">
+                  {(() => {
+                    const tagInfo = PREDEFINED_TAGS.find(t => t.value === tag);
+                    return tagInfo ? (
+                      <span className={`px-2 py-1 rounded text-xs ${tagInfo.bgColor} ${tagInfo.textColor}`}>
+                        {tagInfo.icon} {tagInfo.label}
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
               </div>
             )}
           </div>

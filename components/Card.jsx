@@ -2,6 +2,18 @@
 import { memo, useState, useCallback, useEffect } from "react";
 import CardModal from "./CardModal";
 
+// Tag color mapping with icons
+const TAG_INFO = {
+  'urgent': { bg: 'bg-red-600', text: 'text-white', icon: '🚨', label: 'Urgent' },
+  'high-priority': { bg: 'bg-orange-600', text: 'text-white', icon: '⚡', label: 'High Priority' },
+  'low-priority': { bg: 'bg-gray-600', text: 'text-white', icon: '📌', label: 'Low Priority' },
+  'bug': { bg: 'bg-red-700', text: 'text-white', icon: '🐛', label: 'Bug' },
+  'feature': { bg: 'bg-blue-600', text: 'text-white', icon: '✨', label: 'Feature' },
+  'enhancement': { bg: 'bg-purple-600', text: 'text-white', icon: '🔧', label: 'Enhancement' },
+  'blocked': { bg: 'bg-yellow-600', text: 'text-white', icon: '🚫', label: 'Blocked' },
+  'review-needed': { bg: 'bg-indigo-600', text: 'text-white', icon: '👀', label: 'Review Needed' },
+};
+
 function Card({ card, onDelete, onEdit, onDragStart, onDragEnd, isDragging }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,6 +101,22 @@ function Card({ card, onDelete, onEdit, onDragStart, onDragEnd, isDragging }) {
             className="w-full h-32 object-cover rounded mb-2"
           />
         )}
+        {/* Single Tag Display */}
+        {card.tag && !isEditing && (
+          <div className="mb-2">
+            {(() => {
+              const tagInfo = TAG_INFO[card.tag];
+              if (!tagInfo) return null;
+              return (
+                <span
+                  className={`${tagInfo.bg} ${tagInfo.text} px-2 py-1 rounded text-xs font-semibold inline-block`}
+                >
+                  {tagInfo.icon} {tagInfo.label}
+                </span>
+              );
+            })()}
+          </div>
+        )}
         <div className="flex justify-between items-center">
           {isEditing ? (
             <input
@@ -163,6 +191,7 @@ export default memo(Card, (prevProps, nextProps) => {
     prevProps.card.image_url === nextProps.card.image_url &&
     prevProps.card.due_date === nextProps.card.due_date &&
     prevProps.card.status === nextProps.card.status &&
+    prevProps.card.tag === nextProps.card.tag &&
     prevProps.isDragging === nextProps.isDragging
   );
   
@@ -174,6 +203,9 @@ export default memo(Card, (prevProps, nextProps) => {
       columnChanged: prevProps.card.column_id !== nextProps.card.column_id,
       creatorChanged: prevProps.card.createdByUsername !== nextProps.card.createdByUsername,
       imageChanged: prevProps.card.image_url !== nextProps.card.image_url,
+      dueDateChanged: prevProps.card.due_date !== nextProps.card.due_date,
+      statusChanged: prevProps.card.status !== nextProps.card.status,
+      tagChanged: prevProps.card.tag !== nextProps.card.tag,
       draggingChanged: prevProps.isDragging !== nextProps.isDragging,
       prevTitle: prevProps.card.title,
       nextTitle: nextProps.card.title
