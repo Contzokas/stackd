@@ -154,17 +154,26 @@ export default function Board({ boardId, initialColumns, initialCards, onBoardUp
     }
   }, []);
 
-  const handleEditCard = useCallback(async (cardId, newTitle, newDescription) => {
-    console.log('Board handleEditCard called:', { cardId, newTitle, newDescription });
+  const handleEditCard = useCallback(async (cardId, updates) => {
+    console.log('Board handleEditCard called:', { cardId, updates });
     
     try {
-      // Build update object with only the fields that are provided
-      const updates = {};
-      if (newTitle !== undefined) {
-        updates.title = newTitle?.trim() || 'Untitled';
+      // If updates is a string, it's the old API (just title), convert to object
+      if (typeof updates === 'string') {
+        updates = { title: updates?.trim() || 'Untitled' };
       }
-      if (newDescription !== undefined) {
-        updates.description = newDescription;
+      
+      // If second parameter was description, convert old API
+      if (arguments.length > 2) {
+        const newTitle = arguments[1];
+        const newDescription = arguments[2];
+        updates = {};
+        if (newTitle !== undefined) {
+          updates.title = newTitle?.trim() || 'Untitled';
+        }
+        if (newDescription !== undefined) {
+          updates.description = newDescription;
+        }
       }
 
       console.log('Sending updates to API:', updates);
@@ -183,7 +192,9 @@ export default function Board({ boardId, initialColumns, initialCards, onBoardUp
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update card');
+        const errorText = await response.text();
+        console.error('Failed to update card:', response.status, errorText);
+        throw new Error(`Failed to update card: ${errorText}`);
       }
 
       const updatedCard = await response.json();

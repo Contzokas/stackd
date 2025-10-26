@@ -2,21 +2,26 @@
 import { useState, memo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useUser } from "@clerk/nextjs";
+import { supabase } from "@/lib/supabase";
 
 function CardModalContent({ card, onClose, onSave, onDelete }) {
   const { user } = useUser();
   const [title, setTitle] = useState(card.title);
   const [localDescription, setLocalDescription] = useState(card.description || "");
+  const [imageUrl, setImageUrl] = useState(card.image_url || "");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [isLoadingComments, setIsLoadingComments] = useState(true);
   const [isPostingComment, setIsPostingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentText, setEditingCommentText] = useState("");
+  const fileInputRef = useRef(null);
   
   // Track the last saved values to detect actual data changes from database
   const lastSyncedTitle = useRef(card.title);
   const lastSyncedDescription = useRef(card.description || "");
+  const lastSyncedImageUrl = useRef(card.image_url || "");
   const currentCardIdRef = useRef(card.id);
 
   // Sync local state when:
@@ -25,27 +30,32 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
   useEffect(() => {
     const titleChanged = card.title !== lastSyncedTitle.current;
     const descriptionChanged = (card.description || "") !== lastSyncedDescription.current;
+    const imageUrlChanged = (card.image_url || "") !== lastSyncedImageUrl.current;
     const cardIdChanged = currentCardIdRef.current !== card.id;
     
-    if (cardIdChanged || titleChanged || descriptionChanged) {
+    if (cardIdChanged || titleChanged || descriptionChanged || imageUrlChanged) {
       console.log('CardModal: Syncing state -', {
         cardIdChanged,
         titleChanged,
         descriptionChanged,
+        imageUrlChanged,
         newTitle: card.title,
-        newDescription: card.description
+        newDescription: card.description,
+        newImageUrl: card.image_url
       });
       
       // Update refs
       currentCardIdRef.current = card.id;
       lastSyncedTitle.current = card.title;
       lastSyncedDescription.current = card.description || "";
+      lastSyncedImageUrl.current = card.image_url || "";
       
       // Update local state
       setTitle(card.title);
       setLocalDescription(card.description || "");
+      setImageUrl(card.image_url || "");
     }
-  }, [card.id, card.title, card.description])
+  }, [card.id, card.title, card.description, card.image_url])
 
   // Fetch comments
   const fetchComments = useCallback(async () => {
@@ -146,36 +156,127 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
 
   const handleManualSave = useCallback(() => {
     console.log('=== Manual save clicked ===');
-    console.log('Saving:', { title: title.trim(), description: localDescription });
+    console.log('Saving:', { title: title.trim(), description: localDescription, image_url: imageUrl });
     
     // Always save current values
     const updates = {
       title: title.trim(),
-      description: localDescription
+      description: localDescription,
+      image_url: imageUrl
     };
     
     onSave(card.id, updates);
-  }, [card.id, title, localDescription, onSave]);
+  }, [card.id, title, localDescription, imageUrl, onSave]);
+
+  // Handle image upload
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be less than 5MB');
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${card.id}-${Date.now()}.${fileExt}`;
+      const filePath = `card-images/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('card-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Upload error:', error);
+        throw error;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('card-images')
+        .getPublicUrl(filePath);
+
+      console.log('Image uploaded:', publicUrl);
+      setImageUrl(publicUrl);
+
+      // Auto-save with new image
+      onSave(card.id, {
+        title: title.trim(),
+        description: localDescription,
+        image_url: publicUrl
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Handle image removal
+  const handleRemoveImage = async () => {
+    if (!imageUrl) return;
+
+    try {
+      // Extract file path from URL if it's a Supabase URL
+      if (imageUrl.includes('card-images/')) {
+        const urlParts = imageUrl.split('card-images/');
+        const filePath = `card-images/${urlParts[1].split('?')[0]}`;
+        
+        // Delete from storage
+        await supabase.storage
+          .from('card-images')
+          .remove([filePath]);
+      }
+
+      setImageUrl('');
+      
+      // Auto-save without image
+      onSave(card.id, {
+        title: title.trim(),
+        description: localDescription,
+        image_url: ''
+      });
+    } catch (error) {
+      console.error('Error removing image:', error);
+    }
+  };
 
   // Auto-save: Trigger save 1 second after user stops typing
   useEffect(() => {
     const titleChanged = title.trim() !== card.title;
     const descriptionChanged = localDescription !== (card.description || "");
+    const imageUrlChanged = imageUrl !== (card.image_url || "");
     
     // Only auto-save if something actually changed
-    if (titleChanged || descriptionChanged) {
+    if (titleChanged || descriptionChanged || imageUrlChanged) {
       const timeoutId = setTimeout(() => {
         console.log('Auto-saving after typing stopped');
         const updates = {
           title: title.trim(),
-          description: localDescription
+          description: localDescription,
+          image_url: imageUrl
         };
         onSave(card.id, updates);
       }, 1000); // Wait 1 second after user stops typing
 
       return () => clearTimeout(timeoutId);
     }
-  }, [title, localDescription, card.id, card.title, card.description, onSave]);
+  }, [title, localDescription, imageUrl, card.id, card.title, card.description, card.image_url, onSave]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') {
@@ -204,6 +305,18 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
                 className="w-full bg-transparent text-white text-2xl font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400 rounded px-2 py-1"
                 placeholder="Card title"
               />
+              {card.createdByUsername && (
+                <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
+                  {card.createdByImageUrl && (
+                    <img 
+                      src={card.createdByImageUrl} 
+                      alt={card.createdByUsername}
+                      className="w-5 h-5 rounded-full"
+                    />
+                  )}
+                  <span>Created by @{card.createdByUsername}</span>
+                </div>
+              )}
             </div>
             <button
               onClick={onClose}
@@ -217,6 +330,50 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
 
         {/* Content */}
         <div className="p-6 space-y-6">
+          {/* Image Section */}
+          <div>
+            <label className="block text-white font-semibold mb-2 text-sm">
+              🖼️ Image
+            </label>
+            {imageUrl ? (
+              <div className="relative">
+                <img 
+                  src={imageUrl} 
+                  alt="Card image"
+                  className="w-full rounded-lg max-h-96 object-cover"
+                />
+                <button
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-2 shadow-lg transition-colors"
+                  title="Remove image"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingImage}
+                  className="w-full bg-[#1a1a1a] hover:bg-[#2a2a2a] text-gray-400 hover:text-white rounded-lg p-4 border-2 border-dashed border-gray-600 hover:border-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUploadingImage ? (
+                    <span>📤 Uploading...</span>
+                  ) : (
+                    <span>📎 Click to upload image (max 5MB)</span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Description Section */}
           <div>
             <label className="block text-white font-semibold mb-2 text-sm">

@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import { getServiceSupabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
@@ -87,10 +88,34 @@ export async function GET(req, { params }) {
     
     console.log('Fetched cards:', cards.length, 'cards for', columnIds.length, 'columns');
 
+    // Fetch creator info for each card from Clerk
+    const cardsWithCreators = await Promise.all(
+      cards.map(async (card) => {
+        try {
+          const client = await clerkClient();
+          const creator = await client.users.getUser(card.created_by);
+          return {
+            ...card,
+            createdByUsername: creator.username || creator.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown',
+            createdByFullName: `${creator.firstName || ''} ${creator.lastName || ''}`.trim() || null,
+            createdByImageUrl: creator.imageUrl,
+          };
+        } catch (error) {
+          console.error(`Error fetching creator ${card.created_by}:`, error);
+          return {
+            ...card,
+            createdByUsername: 'Unknown',
+            createdByFullName: null,
+            createdByImageUrl: null,
+          };
+        }
+      })
+    );
+
     return NextResponse.json({
       ...board,
       columns: transformedColumns,
-      cards: cards
+      cards: cardsWithCreators
     });
   } catch (error) {
     console.error('Error fetching board:', error);

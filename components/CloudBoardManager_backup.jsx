@@ -77,28 +77,83 @@ export default function CloudBoardManager() {
     fetchActiveBoardData();
   }, [fetchActiveBoardData]);
 
-
-  // Set up real-time updates using polling (fallback since broadcasts are timing out)
+  // Set up real-time subscriptions for active board
   useEffect(() => {
     if (!activeBoard || !user) return;
 
-    console.log(' Setting up polling for board:', activeBoard);
-    
-    // Poll every 3 seconds for updates
-    const interval = setInterval(() => {
-      console.log(' Polling for board updates...');
-      setIsSyncing(true);
-      fetchActiveBoardData();
-      setTimeout(() => setIsSyncing(false), 500);
-    }, 3000);
+    console.log('🔌 Setting up real-time subscriptions for board:', activeBoard);
+
+    // Create a single channel with schema: public (bypass RLS for realtime)
+    const channel = supabase
+      .channel(`board-changes-${activeBoard}`, {
+        config: {
+          broadcast: { ack: false, self: false },
+        }
+      })
+      
+      // Listen to board-level broadcasts
+      .on(
+        'broadcast',
+        { event: 'board-update' },
+        (payload) => {
+          console.log('🔄 Board updated:', payload);
+          setIsSyncing(true);
+          fetchActiveBoardData();
+          setTimeout(() => setIsSyncing(false), 1000);
+        }
+      )
+      .on(
+        'broadcast',
+        { event: 'card-update' },
+        (payload) => {
+          console.log('🔄 Card updated:', payload);
+          setIsSyncing(true);
+          fetchActiveBoardData();
+          setTimeout(() => setIsSyncing(false), 1000);
+        }
+      )
+      .on(
+        'broadcast',
+        { event: 'card-delete' },
+        (payload) => {
+          console.log('�️ Card deleted:', payload);
+          setIsSyncing(true);
+          fetchActiveBoardData();
+          setTimeout(() => setIsSyncing(false), 1000);
+        }
+      )
+      .on(
+        'broadcast',
+        { event: 'column-update' },
+        (payload) => {
+          console.log('🔄 Column updated:', payload);
+          setIsSyncing(true);
+          fetchActiveBoardData();
+          setTimeout(() => setIsSyncing(false), 1000);
+        }
+      )
+      .on(
+        'broadcast',
+        { event: 'column-delete' },
+        (payload) => {
+          console.log('🗑️ Column deleted:', payload);
+          setIsSyncing(true);
+          fetchActiveBoardData();
+          setTimeout(() => setIsSyncing(false), 1000);
+        }
+      )
+      
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+        setRealtimeStatus(status);
+      });
 
     // Cleanup on unmount or when board changes
     return () => {
-      console.log(' Stopping polling for board:', activeBoard);
-      clearInterval(interval);
+      console.log('🔌 Cleaning up real-time subscriptions');
+      supabase.removeChannel(channel);
     };
   }, [activeBoard, fetchActiveBoardData, user]);
-
 
   const handleCreateBoard = useCallback(async (name) => {
     console.log('Creating board:', name);

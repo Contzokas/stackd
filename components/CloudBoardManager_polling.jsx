@@ -77,28 +77,7 @@ export default function CloudBoardManager() {
     fetchActiveBoardData();
   }, [fetchActiveBoardData]);
 
-
-  // Set up real-time updates using polling (fallback since broadcasts are timing out)
-  useEffect(() => {
-    if (!activeBoard || !user) return;
-
-    console.log(' Setting up polling for board:', activeBoard);
-    
-    // Poll every 3 seconds for updates
-    const interval = setInterval(() => {
-      console.log(' Polling for board updates...');
-      setIsSyncing(true);
-      fetchActiveBoardData();
-      setTimeout(() => setIsSyncing(false), 500);
-    }, 3000);
-
-    // Cleanup on unmount or when board changes
-    return () => {
-      console.log(' Stopping polling for board:', activeBoard);
-      clearInterval(interval);
-    };
-  }, [activeBoard, fetchActiveBoardData, user]);
-
+  // Set up real-time updates using polling (fallback since broadcasts are timing out)`r`n  useEffect(() => {`r`n    if (!activeBoard || !user) return;`r`n`r`n    console.log(' Setting up polling for board:', activeBoard);`r`n    `r`n    // Poll every 3 seconds for updates`r`n    const interval = setInterval(() => {`r`n      console.log(' Polling for board updates...');`r`n      setIsSyncing(true);`r`n      fetchActiveBoardData();`r`n      setTimeout(() => setIsSyncing(false), 500);`r`n    }, 3000);`r`n`r`n    // Cleanup on unmount or when board changes`r`n    return () => {`r`n      console.log(' Stopping polling for board:', activeBoard);`r`n      clearInterval(interval);`r`n    };`r`n  }, [activeBoard, fetchActiveBoardData, user]);
 
   const handleCreateBoard = useCallback(async (name) => {
     console.log('Creating board:', name);
@@ -309,3 +288,4 @@ export default function CloudBoardManager() {
     </>
   );
 }
+

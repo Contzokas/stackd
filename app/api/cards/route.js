@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import { getServiceSupabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
@@ -23,7 +24,7 @@ export async function POST(req) {
     const { data: card, error } = await supabase
       .from('cards')
       .insert([{
-        column_id,
+        column_id: columnId,
         title,
         description,
         created_by: userId
@@ -36,7 +37,26 @@ export async function POST(req) {
       throw error;
     }
 
-    return NextResponse.json(card);
+    // Fetch creator info from Clerk
+    try {
+      const client = await clerkClient();
+      const creator = await client.users.getUser(card.created_by);
+      const cardWithCreator = {
+        ...card,
+        createdByUsername: creator.username || creator.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown',
+        createdByFullName: `${creator.firstName || ''} ${creator.lastName || ''}`.trim() || null,
+        createdByImageUrl: creator.imageUrl,
+      };
+      
+      // Broadcast the new card to all subscribers (disabled - using polling instead)
+      // The polling approach in CloudBoardManager will pick up changes automatically
+      
+      return NextResponse.json(cardWithCreator);
+    } catch (clerkError) {
+      console.error('Error fetching creator info:', clerkError);
+      // Return card without creator info if Clerk fails
+      return NextResponse.json(card);
+    }
   } catch (error) {
     console.error('Error creating card:', error);
     return new NextResponse(error.message, { status: 500 });
@@ -64,26 +84,87 @@ export async function PUT(req) {
     console.log('PUT /api/cards - Received body:', body);
     console.log('PUT /api/cards - Card ID:', cardId);
     
+    // Filter out any fields that aren't in the cards table
+    const allowedFields = ['title', 'description', 'column_id', 'image_url'];
+    const updateData = {};
+    for (const [key, value] of Object.entries(body)) {
+      if (allowedFields.includes(key)) {
+        updateData[key] = value;
+      } else {
+        console.warn(`Ignoring unknown field: ${key}`);
+      }
+    }
+    
+    console.log('PUT /api/cards - Filtered update data:', updateData);
+    
+    if (Object.keys(updateData).length === 0) {
+      console.log('PUT /api/cards - No valid fields to update');
+      return new NextResponse('No valid fields to update', { status: 400 });
+    }
+    
     const supabase = getServiceSupabase();
     
-    // Update card
+    console.log('PUT /api/cards - About to update database...');
+    
+    // Update card and make sure we get all fields back
     const { data: card, error } = await supabase
       .from('cards')
-      .update(body)
+      .update(updateData)
       .eq('id', cardId)
       .select()
       .single();
 
+    console.log('PUT /api/cards - Database response:', { card, error });
+
     if (error) {
       console.error('Database error updating card:', error);
-      throw error;
+      return new NextResponse(JSON.stringify({ error: error.message, details: error }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    if (!card) {
+      console.error('No card returned from database');
+      return new NextResponse('Card not found', { status: 404 });
     }
 
-    console.log('PUT /api/cards - Returning updated card:', card);
-    return NextResponse.json(card);
+    // Fetch creator info from Clerk
+    try {
+      console.log('PUT /api/cards - Fetching creator info for user:', card.created_by);
+      const client = await clerkClient();
+      const creator = await client.users.getUser(card.created_by);
+      console.log('PUT /api/cards - Creator fetched successfully');
+      
+      const cardWithCreator = {
+        ...card,
+        createdByUsername: creator.username || creator.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown',
+        createdByFullName: `${creator.firstName || ''} ${creator.lastName || ''}`.trim() || null,
+        createdByImageUrl: creator.imageUrl,
+      };
+      
+      console.log('PUT /api/cards - Returning updated card with creator:', cardWithCreator);
+      
+      // Broadcast the updated card to all subscribers (disabled - using polling instead)
+      // The polling approach in CloudBoardManager will pick up changes automatically
+      
+      return NextResponse.json(cardWithCreator);
+    } catch (clerkError) {
+      console.error('Error fetching creator info:', clerkError);
+      // Return card without creator info if Clerk fails
+      console.log('PUT /api/cards - Returning updated card (no creator info):', card);
+      return NextResponse.json(card);
+    }
   } catch (error) {
-    console.error('Error updating card:', error);
-    return new NextResponse(error.message, { status: 500 });
+    console.error('Error updating card - Full error:', error);
+    console.error('Error stack:', error.stack);
+    return new NextResponse(JSON.stringify({ 
+      error: error.message,
+      stack: error.stack 
+    }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 
@@ -105,6 +186,13 @@ export async function DELETE(req) {
   try {
     const supabase = getServiceSupabase();
     
+    // Get card info before deleting (for board_id)
+    const { data: cardToDelete } = await supabase
+      .from('cards')
+      .select('id, board_id')
+      .eq('id', cardId)
+      .single();
+    
     // Delete card
     const { error } = await supabase
       .from('cards')
@@ -115,6 +203,9 @@ export async function DELETE(req) {
       console.error('Database error deleting card:', error);
       throw error;
     }
+
+    // Broadcast the deletion to all subscribers (disabled - using polling instead)
+    // The polling approach in CloudBoardManager will pick up changes automatically
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

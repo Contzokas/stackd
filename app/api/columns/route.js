@@ -36,6 +36,9 @@ export async function POST(req) {
       throw error;
     }
 
+    // Broadcast the new column to all subscribers (disabled - using polling instead)
+    // The polling approach in CloudBoardManager will pick up changes automatically
+
     return NextResponse.json(column);
   } catch (error) {
     console.error('Error creating column:', error);
@@ -76,6 +79,9 @@ export async function PUT(req) {
       throw error;
     }
 
+    // Broadcast the updated column to all subscribers (disabled - using polling instead)
+    // The polling approach in CloudBoardManager will pick up changes automatically
+
     return NextResponse.json(column);
   } catch (error) {
     console.error('Error updating column:', error);
@@ -101,6 +107,13 @@ export async function DELETE(req) {
   try {
     const supabase = getServiceSupabase();
     
+    // Get column info before deleting (for board_id)
+    const { data: columnToDelete } = await supabase
+      .from('columns')
+      .select('id, board_id')
+      .eq('id', columnId)
+      .single();
+    
     // Delete column (cascades to cards)
     const { error } = await supabase
       .from('columns')
@@ -111,6 +124,9 @@ export async function DELETE(req) {
       console.error('Database error deleting column:', error);
       throw error;
     }
+
+    // Broadcast the deletion to all subscribers (disabled - using polling instead)
+    // The polling approach in CloudBoardManager will pick up changes automatically
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
