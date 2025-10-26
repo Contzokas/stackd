@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Footer from "@/components/Footer";
+import OfflineIndicator from "@/components/OfflineIndicator";
 import { ClerkProvider } from "@clerk/nextjs";
 
 const geistSans = Geist({
@@ -15,7 +16,12 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: "Stackd - Modern Task Management",
-  description: "Organize your work and life with Stackd. A modern, intuitive task management solution.",
+  description: "Organize your work and life with Stackd. A modern, intuitive task management solution with offline support.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Stackd",
+  },
   openGraph: {
     title: "Stackd - Modern Task Management",
     description: "Organize your work and life with Stackd",
@@ -44,6 +50,10 @@ export default function RootLayout({ children }) {
   return (
     <ClerkProvider>
       <html lang="en">
+        <head>
+          <link rel="manifest" href="/manifest.json" />
+          <meta name="theme-color" content="#2563eb" />
+        </head>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
         >
@@ -51,6 +61,7 @@ export default function RootLayout({ children }) {
             {children}
           </div>
           <Footer />
+          <OfflineIndicator />
         </body>
       </html>
     </ClerkProvider>

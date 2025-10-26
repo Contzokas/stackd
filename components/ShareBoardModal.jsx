@@ -124,15 +124,24 @@ export default function ShareBoardModal({ boardId, boardName, isOpen, onClose })
     if (!window.confirm('Remove this user from the board?')) return;
 
     try {
-      const response = await fetch(`/api/boards/${boardId}/share?userId=${userId}`, {
+      const response = await fetch(`/api/boards/${boardId}/share`, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
       });
 
       if (response.ok) {
         fetchMembers();
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to remove member:', errorText);
+        alert('Failed to remove member. Please try again.');
       }
     } catch (error) {
       console.error('Error removing member:', error);
+      alert('Error removing member. Please try again.');
     }
   };
 
