@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { supabase } from '@/lib/supabase';
+import { getServiceSupabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
 // POST /api/columns - Create a new column
@@ -17,6 +17,8 @@ export async function POST(req) {
       return new NextResponse("Board ID and title are required", { status: 400 });
     }
 
+    const supabase = getServiceSupabase();
+
     // Create column
     const { data: column, error } = await supabase
       .from('columns')
@@ -29,7 +31,10 @@ export async function POST(req) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error creating column:', error);
+      throw error;
+    }
 
     return NextResponse.json(column);
   } catch (error) {
@@ -56,6 +61,8 @@ export async function PUT(req) {
   try {
     const body = await req.json();
     
+    const supabase = getServiceSupabase();
+    
     // Update column
     const { data: column, error } = await supabase
       .from('columns')
@@ -64,7 +71,10 @@ export async function PUT(req) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error updating column:', error);
+      throw error;
+    }
 
     return NextResponse.json(column);
   } catch (error) {
@@ -89,13 +99,18 @@ export async function DELETE(req) {
   }
 
   try {
+    const supabase = getServiceSupabase();
+    
     // Delete column (cascades to cards)
     const { error } = await supabase
       .from('columns')
       .delete()
       .eq('id', columnId);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error deleting column:', error);
+      throw error;
+    }
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

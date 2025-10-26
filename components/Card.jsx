@@ -1,11 +1,18 @@
 "use client";
-import { memo, useState, useCallback } from "react";
+import { memo, useState, useCallback, useEffect } from "react";
 import CardModal from "./CardModal";
 
 function Card({ card, onDelete, onEdit, onDragStart, onDragEnd, isDragging }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editValue, setEditValue] = useState(card.title);
+
+  // Update editValue when card.title changes from outside
+  useEffect(() => {
+    if (!isEditing) {
+      setEditValue(card.title);
+    }
+  }, [card.title, isEditing]);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -33,8 +40,17 @@ function Card({ card, onDelete, onEdit, onDragStart, onDragEnd, isDragging }) {
   };
 
   const handleModalSave = useCallback((cardId, updates) => {
-    onEdit(cardId, updates.title, updates.description);
+    console.log('Card handleModalSave:', { cardId, updates });
+    // Pass individual fields to onEdit, handling partial updates
+    const newTitle = updates.title !== undefined ? updates.title : undefined;
+    const newDescription = updates.description !== undefined ? updates.description : undefined;
+    onEdit(cardId, newTitle, newDescription);
   }, [onEdit]);
+
+  // Log when card prop changes
+  useEffect(() => {
+    console.log('Card component received new card prop:', card);
+  }, [card]);
 
   return (
     <>
@@ -103,9 +119,25 @@ function Card({ card, onDelete, onEdit, onDragStart, onDragEnd, isDragging }) {
 
 // Memoize to prevent unnecessary re-renders
 export default memo(Card, (prevProps, nextProps) => {
-  return (
+  const shouldNotUpdate = (
     prevProps.card.id === nextProps.card.id &&
     prevProps.card.title === nextProps.card.title &&
+    prevProps.card.description === nextProps.card.description &&
+    prevProps.card.column_id === nextProps.card.column_id &&
     prevProps.isDragging === nextProps.isDragging
   );
+  
+  if (!shouldNotUpdate) {
+    console.log('Card memo: Re-rendering because something changed:', {
+      id: prevProps.card.id,
+      titleChanged: prevProps.card.title !== nextProps.card.title,
+      descriptionChanged: prevProps.card.description !== nextProps.card.description,
+      columnChanged: prevProps.card.column_id !== nextProps.card.column_id,
+      draggingChanged: prevProps.isDragging !== nextProps.isDragging,
+      prevTitle: prevProps.card.title,
+      nextTitle: nextProps.card.title
+    });
+  }
+  
+  return shouldNotUpdate;
 });

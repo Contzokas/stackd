@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { supabase } from '@/lib/supabase';
+import { getServiceSupabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
 // POST /api/cards - Create a new card
@@ -17,6 +17,8 @@ export async function POST(req) {
       return new NextResponse("Column ID and title are required", { status: 400 });
     }
 
+    const supabase = getServiceSupabase();
+
     // Create card
     const { data: card, error } = await supabase
       .from('cards')
@@ -29,7 +31,10 @@ export async function POST(req) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error creating card:', error);
+      throw error;
+    }
 
     return NextResponse.json(card);
   } catch (error) {
@@ -56,6 +61,11 @@ export async function PUT(req) {
   try {
     const body = await req.json();
     
+    console.log('PUT /api/cards - Received body:', body);
+    console.log('PUT /api/cards - Card ID:', cardId);
+    
+    const supabase = getServiceSupabase();
+    
     // Update card
     const { data: card, error } = await supabase
       .from('cards')
@@ -64,8 +74,12 @@ export async function PUT(req) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error updating card:', error);
+      throw error;
+    }
 
+    console.log('PUT /api/cards - Returning updated card:', card);
     return NextResponse.json(card);
   } catch (error) {
     console.error('Error updating card:', error);
@@ -89,13 +103,18 @@ export async function DELETE(req) {
   }
 
   try {
+    const supabase = getServiceSupabase();
+    
     // Delete card
     const { error } = await supabase
       .from('cards')
       .delete()
       .eq('id', cardId);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error deleting card:', error);
+      throw error;
+    }
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

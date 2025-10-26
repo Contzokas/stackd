@@ -1,4 +1,5 @@
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
@@ -122,7 +123,8 @@ export async function GET(req, { params }) {
     const membersWithDetails = await Promise.all(
       (members || []).map(async (member) => {
         try {
-          const user = await clerkClient.users.getUser(member.user_id);
+          const client = await clerkClient();
+          const user = await client.users.getUser(member.user_id);
           return {
             ...member,
             username: user.username || user.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown',

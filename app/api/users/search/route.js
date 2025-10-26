@@ -1,4 +1,5 @@
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -13,7 +14,8 @@ export async function GET(request) {
     }
 
     // Search for users by username
-    const users = await clerkClient.users.getUserList({
+    const client = await clerkClient();
+    const users = await client.users.getUserList({
       limit: 10,
     });
 
