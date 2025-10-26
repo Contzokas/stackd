@@ -85,7 +85,8 @@ export async function PUT(req) {
     console.log('PUT /api/cards - Card ID:', cardId);
     
     // Filter out any fields that aren't in the cards table
-    const allowedFields = ['title', 'description', 'column_id', 'image_url'];
+    // NOTE: cards table does NOT have image_url column
+    const allowedFields = ['title', 'description', 'column_id'];
     const updateData = {};
     for (const [key, value] of Object.entries(body)) {
       if (allowedFields.includes(key)) {

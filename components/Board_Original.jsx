@@ -13,12 +13,27 @@ export default function Board({ boardId, initialColumns, initialCards, onBoardUp
 
   const boardKey = useMemo(() => boardId, [boardId]);
 
-  // Reset state when board changes
+  // Create a stable key based on data content for change detection
+  const dataKey = useMemo(() => {
+    const colCount = initialColumns?.length || 0;
+    const cardCount = initialCards?.length || 0;
+    const colIds = initialColumns?.map(c => c.id).join(',') || '';
+    const cardIds = initialCards?.map(c => c.id).join(',') || '';
+    const cardTitles = initialCards?.map(c => c.title).join(',') || '';
+    return `${colCount}-${cardCount}-${colIds}-${cardIds}-${cardTitles}`;
+  }, [initialColumns, initialCards]);
+
+  // Reset state when board changes OR when data content changes (from polling)
   useEffect(() => {
+    console.log('Updating Board state from props:', {
+      columns: initialColumns?.length || 0,
+      cards: initialCards?.length || 0,
+      dataKey
+    });
     setColumns(initialColumns || []);
     setCards(initialCards || []);
     setHasChanged(false);
-  }, [boardKey]); // Only depend on boardKey memo
+  }, [boardKey, dataKey]); // Update when boardId or data content changes
 
   // Use drag and drop hooks
   const {
