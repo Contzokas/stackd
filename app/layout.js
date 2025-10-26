@@ -15,23 +15,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Stackd - Modern Task Management",
-  description: "Organize your work and life with Stackd. A modern, intuitive task management solution with offline support.",
+  title: "Stackd - Offline-First Task Management",
+  description: "Modern, offline-first task management with free-form drag-and-drop columns. Work seamlessly online or offline with automatic sync. Built with Next.js and Supabase.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Stackd",
   },
   openGraph: {
-    title: "Stackd - Modern Task Management",
-    description: "Organize your work and life with Stackd",
-    url: "https://stackd.vercel.app", // Update with your URL
+    title: "Stackd - Offline-First Task Management",
+    description: "Modern, offline-first task management with free-form drag-and-drop columns. Work seamlessly online or offline with automatic sync.",
+    url: "https://stackd.vercel.app", // Update with your actual deployment URL
     siteName: "Stackd",
     images: [
       {
         url: "/Stackd.png",
         width: 1200,
         height: 630,
+        alt: "Stackd - Offline-First Task Management Application",
       },
     ],
     locale: "en_US",
@@ -39,10 +40,14 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Stackd - Modern Task Management",
-    description: "Organize your work and life with Stackd",
+    title: "Stackd - Offline-First Task Management",
+    description: "Modern, offline-first task management with free-form drag-and-drop columns. Work seamlessly online or offline with automatic sync.",
     creator: "@Tziogadoros",
     images: ["/Stackd.png"],
+  },
+  icons: {
+    icon: "/Stackd.png",
+    apple: "/Stackd.png",
   },
 };
 
