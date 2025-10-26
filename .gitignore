@@ -77,3 +77,6 @@ Thumbs.db
 # Local development
 .turbo
 *.log
+
+# clerk configuration (can include secrets)
+/.clerk/

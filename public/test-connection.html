@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Connection Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-box {
+            background: #2a2a2a;
+            border: 2px solid #3a3a3a;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .status {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        .loading { color: #fbbf24; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        pre {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Supabase Connection Test</h1>
+    
+    <div class="test-box">
+        <h2>Quick Status Check</h2>
+        <div id="status" class="status loading">⏳ Click "Test Connection" to begin...</div>
+        <button onclick="testConnection()">Test Connection</button>
+        <button onclick="testHealthEndpoint()">Test Health API</button>
+    </div>
+
+    <div class="test-box">
+        <h3>Results:</h3>
+        <pre id="results">No tests run yet...</pre>
+    </div>
+
+    <div class="test-box">
+        <h3>Instructions:</h3>
+        <ol>
+            <li><strong>Click "Test Connection"</strong> - Tests direct Supabase connection</li>
+            <li><strong>Click "Test Health API"</strong> - Tests your app's health endpoint</li>
+            <li>Check the results below for detailed information</li>
+        </ol>
+        <p><strong>If you see Error 521:</strong> Project is still restarting (wait 1-2 minutes)</p>
+        <p><strong>If you see PGRST205:</strong> Schema cache needs refresh</p>
+        <p><strong>If you see success:</strong> Everything is working! Try creating a board.</p>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://fmnvwtrntaxpgpindnco.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtbnZ3dHJudGF4cGdwaW5kbmNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE0MzA1MTksImV4cCI6MjA3NzAwNjUxOX0.aLqhKGBtWlTY6-jVEp-4vWk-yFHHHa_fWDLl3XvWc7Y';
+
+        function setStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+
+        function setResults(text) {
+            document.getElementById('results').textContent = text;
+        }
+
+        async function testConnection() {
+            setStatus('⏳ Testing Supabase connection...', 'loading');
+            setResults('Testing...');
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                const results = {
+                    timestamp: new Date().toISOString(),
+                    status: response.status,
+                    statusText: response.statusText,
+                    ok: response.ok
+                };
+
+                if (response.ok) {
+                    setStatus('✅ Supabase is ONLINE and responding!', 'success');
+                    results.message = 'Connection successful! Project is active.';
+                } else if (response.status === 521) {
+                    setStatus('⏳ Project is still starting up (Error 521)', 'loading');
+                    results.message = 'Wait 1-2 minutes and try again.';
+                } else {
+                    const text = await response.text();
+                    results.response = text.substring(0, 500);
+                    setStatus(`⚠️  Connection issue (${response.status})`, 'error');
+                }
+
+                setResults(JSON.stringify(results, null, 2));
+            } catch (error) {
+                setStatus('❌ Connection failed', 'error');
+                setResults(`Error: ${error.message}\n\nThis usually means:\n- Project is still paused/starting\n- Network issue\n- Wait a bit longer and try again`);
+            }
+        }
+
+        async function testHealthEndpoint() {
+            setStatus('⏳ Testing app health endpoint...', 'loading');
+            setResults('Testing...');
+
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                if (data.status.ready) {
+                    setStatus('✅ Everything is working!', 'success');
+                } else {
+                    setStatus('⚠️  Some issues detected', 'error');
+                }
+
+                setResults(JSON.stringify(data, null, 2));
+            } catch (error) {
+                setStatus('❌ Health check failed', 'error');
+                setResults(`Error: ${error.message}\n\nMake sure your dev server is running (npm run dev)`);
+            }
+        }
+    </script>
+</body>
+</html>

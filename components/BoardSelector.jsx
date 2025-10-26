@@ -1,5 +1,6 @@
 "use client";
 import { memo, useState, useCallback } from "react";
+import ShareBoardModal from "./ShareBoardModal";
 
 function BoardSelector({ 
   boards, 
@@ -14,6 +15,8 @@ function BoardSelector({
   const [newBoardName, setNewBoardName] = useState("");
   const [editingBoardId, setEditingBoardId] = useState(null);
   const [editedName, setEditedName] = useState("");
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [boardToShare, setBoardToShare] = useState(null);
 
   const handleCreateBoard = useCallback(() => {
     if (newBoardName.trim()) {
@@ -113,6 +116,18 @@ function BoardSelector({
                     </button>
                     <div className="flex items-center gap-1">
                       <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBoardToShare(board);
+                          setShareModalOpen(true);
+                          setIsOpen(false);
+                        }}
+                        className="text-gray-400 hover:text-blue-400 p-1 rounded hover:bg-[#1a1a1a] transition-colors"
+                        title="Share board"
+                      >
+                        👥
+                      </button>
+                      <button
                         onClick={(e) => handleStartEdit(board, e)}
                         className="text-gray-400 hover:text-white p-1 rounded hover:bg-[#1a1a1a] transition-colors"
                         title="Rename board"
@@ -174,6 +189,19 @@ function BoardSelector({
             )}
           </div>
         </div>
+      )}
+
+      {/* Share Board Modal */}
+      {boardToShare && shareModalOpen && (
+        <ShareBoardModal
+          boardId={boardToShare.id}
+          boardName={boardToShare.name}
+          isOpen={shareModalOpen}
+          onClose={() => {
+            setShareModalOpen(false);
+            setBoardToShare(null);
+          }}
+        />
       )}
     </div>
   );
