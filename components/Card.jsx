@@ -52,15 +52,9 @@ function Card({ card, onDelete, onEdit, onDragStart, onDragEnd, isDragging }) {
   };
 
   const handleModalSave = useCallback((cardId, updates) => {
-    console.log('Card handleModalSave:', { cardId, updates });
     // Pass all updates to onEdit
     onEdit(cardId, updates);
   }, [onEdit]);
-
-  // Log when card prop changes
-  useEffect(() => {
-    console.log('Card component received new card prop:', card);
-  }, [card]);
 
   // Check if card is overdue
   const isOverdue = card.due_date && 
@@ -182,7 +176,9 @@ function Card({ card, onDelete, onEdit, onDragStart, onDragEnd, isDragging }) {
 
 // Memoize to prevent unnecessary re-renders
 export default memo(Card, (prevProps, nextProps) => {
-  const shouldNotUpdate = (
+  // Ignore _updateTimestamp in comparison (it's just to force re-render)
+  // Return TRUE if props are equal (skip re-render), FALSE if they changed (do re-render)
+  const propsAreEqual = (
     prevProps.card.id === nextProps.card.id &&
     prevProps.card.title === nextProps.card.title &&
     prevProps.card.description === nextProps.card.description &&
@@ -195,22 +191,5 @@ export default memo(Card, (prevProps, nextProps) => {
     prevProps.isDragging === nextProps.isDragging
   );
   
-  if (!shouldNotUpdate) {
-    console.log('Card memo: Re-rendering because something changed:', {
-      id: prevProps.card.id,
-      titleChanged: prevProps.card.title !== nextProps.card.title,
-      descriptionChanged: prevProps.card.description !== nextProps.card.description,
-      columnChanged: prevProps.card.column_id !== nextProps.card.column_id,
-      creatorChanged: prevProps.card.createdByUsername !== nextProps.card.createdByUsername,
-      imageChanged: prevProps.card.image_url !== nextProps.card.image_url,
-      dueDateChanged: prevProps.card.due_date !== nextProps.card.due_date,
-      statusChanged: prevProps.card.status !== nextProps.card.status,
-      tagChanged: prevProps.card.tag !== nextProps.card.tag,
-      draggingChanged: prevProps.isDragging !== nextProps.isDragging,
-      prevTitle: prevProps.card.title,
-      nextTitle: nextProps.card.title
-    });
-  }
-  
-  return shouldNotUpdate;
+  return propsAreEqual;
 });

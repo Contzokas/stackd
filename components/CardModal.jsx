@@ -398,13 +398,16 @@ function CardModalContent({ card, onClose, onSave, onDelete }) {
                 <button
                   type="button"
                   key={tagOption.value}
-                  onClick={() => {
+                  onClick={async () => {
                     // Toggle: if clicking the same tag, remove it; otherwise set new tag
                     const newTag = tag === tagOption.value ? null : tagOption.value;
                     setTag(newTag);
                     
                     // Save immediately (like title updates)
-                    onSave(card.id, { tag: newTag });
+                    await onSave(card.id, { tag: newTag });
+                    
+                    // Update the ref to prevent auto-save from triggering
+                    lastSyncedTag.current = newTag;
                   }}
                   className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
                     tag === tagOption.value

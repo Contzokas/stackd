@@ -170,8 +170,6 @@ export default function Board({ boardId, initialColumns, initialCards, onBoardUp
   }, []);
 
   const handleEditCard = useCallback(async (cardId, updates) => {
-    console.log('Board handleEditCard called:', { cardId, updates });
-    
     try {
       // If updates is a string, it's the old API (just title), convert to object
       if (typeof updates === 'string') {
@@ -191,11 +189,8 @@ export default function Board({ boardId, initialColumns, initialCards, onBoardUp
         }
       }
 
-      console.log('Sending updates to API:', updates);
-
       // Only update if there's something to update
       if (Object.keys(updates).length === 0) {
-        console.log('No updates to send');
         return;
       }
 
@@ -213,16 +208,13 @@ export default function Board({ boardId, initialColumns, initialCards, onBoardUp
       }
 
       const updatedCard = await response.json();
-      console.log('Received updated card from API:', updatedCard);
 
       // Update local state with the response from database
-      // Force a new object to ensure React detects the change
+      // Add _updateTimestamp to force re-render
       setCards((prev) => {
         const newCards = prev.map((card) =>
-          card.id === cardId ? { ...updatedCard } : card
+          card.id === cardId ? { ...updatedCard, _updateTimestamp: Date.now() } : card
         );
-        console.log('Updated cards state:', newCards);
-        console.log('Updated card details:', newCards.find(c => c.id === cardId));
         return newCards;
       });
     } catch (error) {
@@ -329,7 +321,6 @@ export default function Board({ boardId, initialColumns, initialCards, onBoardUp
     >
       {columns.map((col) => {
         const cardsForCol = cards.filter((card) => card.column_id === col.id);
-        console.log(`Rendering column ${col.id} with ${cardsForCol.length} cards:`, cardsForCol);
         return (
           <FreeFormColumn
             key={col.id}

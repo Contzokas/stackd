@@ -149,7 +149,11 @@ export default memo(FreeFormColumn, (prevProps, nextProps) => {
         prevCard.id === nextCard.id &&
         prevCard.title === nextCard.title &&
         prevCard.description === nextCard.description &&
-        prevCard.column_id === nextCard.column_id
+        prevCard.column_id === nextCard.column_id &&
+        prevCard.tag === nextCard.tag &&
+        prevCard.due_date === nextCard.due_date &&
+        prevCard.status === nextCard.status &&
+        prevCard.image_url === nextCard.image_url
       );
     });
 
