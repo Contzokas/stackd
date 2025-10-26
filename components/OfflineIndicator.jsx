@@ -5,13 +5,16 @@ import { syncManager } from '@/lib/syncManager';
 import { isBrowser } from '@/lib/db';
 
 export default function OfflineIndicator() {
+  // Disable in development for better performance
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
   const [isOnline, setIsOnline] = useState(isBrowser ? navigator.onLine : true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
-    if (!isBrowser) return;
+    if (!isBrowser || isDevelopment) return;
     
     // Get initial pending count
     syncManager.getPendingCount().then(setPendingCount);
@@ -62,6 +65,9 @@ export default function OfflineIndicator() {
       clearInterval(interval);
     };
   }, []);
+
+  // Don't render in development
+  if (isDevelopment) return null;
 
   // Manual sync trigger
   const handleManualSync = async () => {
