@@ -13,10 +13,11 @@ A modern, cloud-based task management application with free-form drag-and-drop c
 - **💾 Auto-Save**: Changes save automatically 1 second after you stop typing
 - **💬 Card Comments**: Add threaded comments with user avatars and timestamps
 - **👥 Board Sharing**: Share boards with other users via email
-- **🔄 Real-time Sync**: All changes persist to database instantly
+- **🔄 Real-time Sync**: Polling-based synchronization updates every 3 seconds across all users
 - **⚡ Optimized Performance**: Built with React.memo, useCallback for smooth interactions
 - **🎨 Modern UI**: Clean, dark-themed interface with smooth transitions
 - **📱 Responsive Design**: Works great on desktop and mobile devices
+- **🔒 Row Level Security**: Supabase RLS ensures data privacy and security
 
 ## 🚀 Getting Started
 
@@ -164,6 +165,13 @@ Unlike traditional Kanban boards, Stackd allows you to position columns anywhere
 - **Optimistic Updates**: UI updates immediately while saving in the background
 - **Database-First**: Always displays the latest data from the database
 
+### Real-time Synchronization
+- **Polling-Based Updates**: Board state refreshes every 3 seconds
+- **Multi-User Collaboration**: Changes made by any user sync to all viewers within 3 seconds
+- **Automatic Conflict Resolution**: Latest database state always wins
+- **Visual Sync Indicator**: Shows when synchronization is in progress
+- **Reliable & Simple**: No WebSocket complexity, works across all networks
+
 ### Performance Optimization
 - **React.memo**: Prevents unnecessary re-renders of columns and cards
 - **Smart Memoization**: Components only re-render when their actual data changes
@@ -178,6 +186,7 @@ Unlike traditional Kanban boards, Stackd allows you to position columns anywhere
 
 ## 📚 Additional Documentation
 
+- **[README.el.md](README.el.md)**: Greek version of this README (Ελληνική έκδοση)
 - **[SETUP_GUIDE.md](SETUP_GUIDE.md)**: Detailed setup instructions for Clerk and Supabase
 - **[QUICK_START.md](QUICK_START.md)**: Quick reference for getting started
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**: Common issues and solutions
